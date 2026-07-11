@@ -1,45 +1,46 @@
 """
 config.py
-
-Fill this in with your own Sheet ID and each tab's GID — no Google login,
-no service account, no JSON key needed. This works because the sheet is
-shared as "Anyone with the link can view."
-
-HOW TO GET SHEET_ID:
-Open your Google Sheet. The URL looks like:
-    https://docs.google.com/spreadsheets/d/1AbCXyz9876543210LongString/edit
-The long string between /d/ and /edit is your SHEET_ID.
-
-HOW TO GET EACH TAB'S GID:
-Click on a tab at the bottom of your Google Sheet (e.g. "OP Incharge").
-Look at the URL — it now ends with something like #gid=123456789
-Copy that number (just the digits) into the matching line below.
-The first/leftmost tab is usually gid=0.
+---------
+All the settings for the dashboard live here.
+If the Google Sheet ever changes, this is the ONLY file you should need to edit.
 """
 
-SHEET_ID = "PUT_YOUR_SHEET_ID_HERE"
+# The long ID in your Google Sheet URL (the part between /d/ and /edit)
+SHEET_ID = "1PCEbzi2RLDSV--bbDwaRMob2nU33PULlyjJp9Xwwv9M"
+
+# The GID of the master "Unit Tracker" tab (the one with every department listed).
+# You can see this number in the URL after gid= when that tab is open.
+MASTER_GID = "143552182"
 
 SHEET_GIDS = {
-    "Medical Admin": 0,
-    "Unit Head": 0,
-    "Quality Head": 0,
-    "IT": 0,
-    "OP Incharge": 0,
-    "Radiology": 0,
-    "Billing": 0,
-    "Pharmacy": 0,
-    "Lab": 0,
-    "ER": 0,
-    "OT Incharge": 0,
-    "IP Incharge": 0,
-    "ICU Incharge": 0,
-    "MS": 0,
+    # "OP Incharge": "PASTE_GID_HERE",
+    # "IP Incharge": "PASTE_GID_HERE",
+    # "ICU Incharge": "PASTE_GID_HERE",
+    # "ER": "PASTE_GID_HERE",
+    # "OT Incharge": "PASTE_GID_HERE",
+    # "Billing": "PASTE_GID_HERE",
+    # "Pharmacy": "PASTE_GID_HERE",
+    # "Lab": "PASTE_GID_HERE",
+    # "Radiology": "PASTE_GID_HERE",
+    # "Quality Head": "PASTE_GID_HERE",
+    # "MS": "PASTE_GID_HERE",
+    # "Medical Admin": "PASTE_GID_HERE",
+    # "Unit Head": "PASTE_GID_HERE",
+    # "IT": "PASTE_GID_HERE",
 }
 
-# Only needed for the Cluster Dashboard, once you have more than one hospital
-# each keeping their own copy of this workbook (also shared as "Anyone with
-# the link can view"):
-CLUSTER_HOSPITALS = {
-    # "Hospital A": "sheet-id-for-hospital-a",
-    # "Hospital B": "sheet-id-for-hospital-b",
-}
+DEPARTMENTS = [
+    {"name": "OPD Operations",     "owner": "OP Incharge",  "icon": "🩺", "page": "pages/01_OPD_Operations.py"},
+    {"name": "IP Operations",      "owner": "IP Incharge",  "icon": "🛏️", "page": "pages/02_IP_Operations.py"},
+    {"name": "ICU Operations",     "owner": "ICU Incharge", "icon": "❤️‍🩹", "page": "pages/03_ICU_Operations.py"},
+    {"name": "Emergency",          "owner": "ER",           "icon": "🚑", "page": "pages/04_Emergency.py"},
+    {"name": "OT Operations",      "owner": "OT Incharge",  "icon": "🔪", "page": "pages/05_OT_Operations.py"},
+    {"name": "Billing & Revenue",  "owner": "Billing",      "icon": "💵", "page": "pages/06_Billing_Revenue.py"},
+    {"name": "Pharmacy",           "owner": "Pharmacy",     "icon": "💊", "page": "pages/07_Pharmacy.py"},
+    {"name": "Laboratory",         "owner": "Lab",          "icon": "🧪", "page": "pages/08_Laboratory.py"},
+    {"name": "Radiology",          "owner": "Radiology",    "icon": "🩻", "page": "pages/09_Radiology.py"},
+    {"name": "Clinical Quality",   "owner": "Quality Head", "icon": "✅", "page": "pages/10_Clinical_Quality.py"},
+    {"name": "Medical Staff",      "owner": "MS",           "icon": "👩‍⚕️", "page": "pages/11_Medical_Staff.py"},
+]
+
+CACHE_TTL_SECONDS = 300  # 5 minutes
