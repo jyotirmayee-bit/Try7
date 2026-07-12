@@ -8,6 +8,7 @@ Run the whole app with:  streamlit run Home.py
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 
 from data_loader import load_master_data
 from utils import add_status_column, department_summary, compute_conversion_metrics, THEME
@@ -120,9 +121,29 @@ with tab_overview:
 
     st.divider()
 
-    left, right = st.columns([2, 1])
+    left, mid, right = st.columns([1.3, 1.7, 1.3])
 
     with left:
+        st.subheader("Overall Health Gauge")
+        gauge = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=overall_health,
+            number={"suffix": "%"},
+            gauge={
+                "axis": {"range": [0, 100]},
+                "bar": {"color": THEME["primary"]},
+                "steps": [
+                    {"range": [0, 50], "color": "#fee2e2"},
+                    {"range": [50, 80], "color": "#fef3c7"},
+                    {"range": [80, 100], "color": "#dcfce7"},
+                ],
+                "threshold": {"line": {"color": "red", "width": 3}, "value": 80},
+            },
+        ))
+        gauge.update_layout(margin=dict(t=30, b=10, l=20, r=20), height=280)
+        st.plotly_chart(gauge, use_container_width=True)
+
+    with mid:
         st.subheader("Department-wise KPI Status")
         if len(filtered_summary):
             chart_df = filtered_summary.melt(
@@ -135,7 +156,7 @@ with tab_overview:
                 chart_df, x="Department", y="Count", color="Status",
                 color_discrete_map=THEME, barmode="stack",
             )
-            fig.update_layout(xaxis_tickangle=-30, legend_title_text="", margin=dict(t=10))
+            fig.update_layout(xaxis_tickangle=-30, legend_title_text="", margin=dict(t=10), height=280)
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No data matches the current filters.")
@@ -149,10 +170,26 @@ with tab_overview:
                 donut_df, names="Status", values="Count", hole=0.55,
                 color="Status", color_discrete_map=THEME,
             )
-            fig2.update_layout(showlegend=True, margin=dict(t=10))
+            fig2.update_layout(showlegend=True, margin=dict(t=10), height=280)
             st.plotly_chart(fig2, use_container_width=True)
         else:
             st.info("No data to show.")
+
+    st.divider()
+
+    # ---- Treemap: a different lens on the same data -- size = KPI count, color = status ----
+    st.subheader("KPI Distribution (Treemap)")
+    st.caption("Box size = number of KPIs, color = status. A quick way to spot where most tracking effort sits.")
+    if len(filtered_df):
+        treemap_df = filtered_df.groupby(["Department", "Status"]).size().reset_index(name="Count")
+        fig_tree = px.treemap(
+            treemap_df, path=["Department", "Status"], values="Count",
+            color="Status", color_discrete_map=THEME,
+        )
+        fig_tree.update_layout(margin=dict(t=10, b=10, l=10, r=10))
+        st.plotly_chart(fig_tree, use_container_width=True)
+    else:
+        st.info("No data matches the current filters.")
 
     st.divider()
 
@@ -217,8 +254,8 @@ with tab_trends:
     if len(trend_df) >= 2:
         trend_df["Period"] = pd.Categorical(trend_df["Period"], ["Last Month", "MTD", "Today"], ordered=True)
         trend_df = trend_df.sort_values("Period")
-        fig4 = px.line(trend_df, x="Period", y="Total", markers=True)
-        fig4.update_traces(line_color=THEME["primary"], line_width=3, marker_size=10)
+        fig4 = px.area(trend_df, x="Period", y="Total", markers=True)
+        fig4.update_traces(line_color=THEME["primary"], fillcolor="rgba(15,76,129,0.15)", line_width=3, marker_size=10)
         fig4.update_layout(margin=dict(t=10))
         st.plotly_chart(fig4, use_container_width=True)
     else:
@@ -235,6 +272,17 @@ with tab_trends:
             with col:
                 st.metric(conv["label"], f"{conv['rate']}%", help=conv["help"])
                 st.caption(f"{conv['numerator_label']} ÷ {conv['denominator_label']}")
+
+        st.markdown("#### Funnel View")
+        for conv in conversions:
+            fig_funnel = go.Figure(go.Funnel(
+                y=[conv["denominator_label"], conv["numerator_label"]],
+                x=[100, conv["rate"]],
+                textinfo="value+percent initial",
+                marker={"color": [THEME["primary"], THEME["accent"]]},
+            ))
+            fig_funnel.update_layout(title=conv["label"], margin=dict(t=40, b=10), height=260)
+            st.plotly_chart(fig_funnel, use_container_width=True)
     else:
         st.info(
             "No matching KPI pairs found yet to calculate a conversion rate. "
@@ -267,6 +315,36 @@ with tab_deepdive:
                 compare_df[["Department", "On Track", "Off Track", "No Data", "Total KPIs", "Health Score"]],
                 use_container_width=True, hide_index=True,
             )
+
+            st.divider()
+            radar_col, bubble_col = st.columns(2)
+
+            with radar_col:
+                st.markdown("#### Radar Comparison")
+                st.caption("Shape shows each department's balance of on-track vs off-track KPIs.")
+                radar_fig = go.Figure()
+                categories = ["On Track", "Off Track", "Health Score"]
+                for _, row in compare_df.iterrows():
+                    values = [row["On Track"], row["Off Track"], row["Health Score"] / 10]  # scaled to fit same axis
+                    radar_fig.add_trace(go.Scatterpolar(
+                        r=values + values[:1],
+                        theta=categories + categories[:1],
+                        fill="toself",
+                        name=row["Department"],
+                    ))
+                radar_fig.update_layout(margin=dict(t=10), height=380)
+                st.plotly_chart(radar_fig, use_container_width=True)
+
+            with bubble_col:
+                st.markdown("#### Size vs Health Bubble Chart")
+                st.caption("Bubble size = number of off-track KPIs. Bigger + lower is worse.")
+                bubble_fig = px.scatter(
+                    compare_df, x="Total KPIs", y="Health Score", size="Off Track",
+                    color="Department", size_max=45, text="Department",
+                )
+                bubble_fig.update_traces(textposition="top center")
+                bubble_fig.update_layout(margin=dict(t=10), height=380, yaxis_range=[-5, 110], showlegend=False)
+                st.plotly_chart(bubble_fig, use_container_width=True)
         else:
             st.info("No data for the selected departments under the current filters.")
     else:
@@ -276,6 +354,18 @@ with tab_deepdive:
 # TAB 4 — RAW DATA
 # =======================================================================
 with tab_raw:
+    st.subheader("Hierarchical View (Sunburst)")
+    st.caption("Click a ring to zoom in — Department in the inner ring, Status in the outer ring.")
+    if len(filtered_df):
+        sunburst_df = filtered_df.groupby(["Department", "Status"]).size().reset_index(name="Count")
+        fig_sun = px.sunburst(
+            sunburst_df, path=["Department", "Status"], values="Count",
+            color="Status", color_discrete_map=THEME,
+        )
+        fig_sun.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=500)
+        st.plotly_chart(fig_sun, use_container_width=True)
+
+    st.divider()
     st.subheader("Full KPI Table")
     display_cols = ["Department", "Particulars", "Today", "MTD", "Target", "Last Month",
                      "Achievement %", "Status Icon", "Status"]
